@@ -13,8 +13,10 @@
 HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
-Snake snake;
+vector<Snake*> snakes;
 HPEN hPen = CreatePen(PS_SOLID, 20, RGB(0, 0, 0));	//pióro o gruboœci 20 mm
+HPEN hRedPen = CreatePen(PS_SOLID, 20, RGB(255, 0, 0));	//pióro o gruboœci 20 mm
+Berry *berry;
 
 // Forward declarations of functions included in this code module:
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -35,6 +37,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	HACCEL hAccelTable;
 
 	srand((unsigned int)time(NULL));
+	berry = new Berry();
 
 	// Initialize global strings
 	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -172,20 +175,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
 		break;
-	case WM_USER:
-		DeleteObject(hPen);								//usuñ pióro
-		PostQuitMessage(0);
-		break;
 	case WM_PAINT:
 		hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code here...
 		SetMapMode(hdc, MM_LOMETRIC);					//ustaw gruboœæ na 0,1 mm
 		SelectObject(hdc, hPen);						//wybierz utworzone pióro
-		snake.Draw(hdc);
+		for(unsigned int i = 0; i < snakes.size(); i++) snakes[i]->Draw(hdc);
+		SelectObject(hdc, hRedPen);						//wybierz utworzone pióro
+		berry->Draw(hdc);
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_TIMER:
-		snake.Move();									//wykonaj ruch wê¿em
+		for(unsigned int i = 0; i < snakes.size(); i++) snakes[i]->Move();				//wykonaj ruch wê¿em
+		for(unsigned int i = snakes.size()-1; i >= 0 && i != -1; i--)
+		{
+			if(snakes[i]->Empty()) 
+			{
+				delete snakes[i];
+				snakes.erase(snakes.begin() + i);
+			}
+		}
 		RedrawWindow(hWnd,  NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_NOCHILDREN);	//i odœwie¿ okno
 		break;
 	case WM_DESTROY:
@@ -196,10 +205,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		switch(wParam)
 		{
 		case VK_LEFT:
-			snake.Turn(LEFT);
+			for(unsigned int i = 0; i < snakes.size(); i++) snakes[i]->Turn(LEFT);
 			break;
 		case VK_RIGHT:
-			snake.Turn(RIGHT);
+			for(unsigned int i = 0; i < snakes.size(); i++) snakes[i]->Turn(RIGHT);
 			break;
 		default:
 			break;
@@ -210,8 +219,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	if(message == GORIGHT)
 	{
-		snake.Add(wParam);
-		snake.SetDirection(RIGHT);
+		if(snakes.size() == 0)
+		{		
+			Snake* snake = new Snake(wParam);
+			snakes.push_back(snake);
+			SetFocus(hWnd);
+		}
+		else for(unsigned int i = 0; i < snakes.size(); i++) 
+		{
+			if(snakes[i]->GetY() == wParam) 
+			{
+				snakes[i]->Add(wParam);
+				break;
+			}
+			else 
+			{
+				Snake* snake = new Snake(wParam);
+				snakes.push_back(snake);
+				SetFocus(hWnd);
+			}
+		}
+		//for(unsigned int i = 0; i < snakes.size(); i++) snakes[i]->SetDirection(RIGHT);
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
